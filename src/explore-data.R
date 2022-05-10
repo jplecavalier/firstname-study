@@ -6,8 +6,8 @@ library(ggplot2)
 
 # Loading raw data ----------------------------------------------------------------------------
 
-qc_h <- fread("data/qc-h-1980-2020.csv")
-qc_f <- fread("data/qc-f-1980-2020.csv")
+qc_h <- fread("data/qc-h-1980-2021.csv")
+qc_f <- fread("data/qc-f-1980-2021.csv")
 
 fr <- fread("data/fr-2020.csv")
 
@@ -25,7 +25,7 @@ data <- rbindlist(c(
       data <- melt(
         data = data[`Prénom/Année` != "Somme:" | is.na(`Prénom/Année`)],
         id.vars = c("sex", "place", "Prénom/Année"),
-        measure.vars = as.character(1980:2020),
+        measure.vars = as.character(1980:2021),
         variable.name = "year",
         value.name = "nb",
         variable.factor = FALSE
@@ -65,7 +65,6 @@ rm(fr, qc_h, qc_f)
 data[, `:=`(
   sex = factor(sex, c("M", "F")),
   place = factor(place, c("Quebec", "France")),
-  name = as.factor(name),
   year = as.integer(year)
 )]
 
@@ -73,21 +72,38 @@ data[, `:=`(
 data <- data[, .(nb = sum(nb)), .(sex, place, name, year)]
 
 # Calculating statistics
-data[, prc_sex_place_year := nb / sum(nb), .(sex, place, year)]
+data[, `:=`(
+  prc_sex_place_year = nb / sum(nb),
+  rnk_sex_place_year = rank(-nb, ties.method = "min")
+), .(sex, place, year)]
 
 # Validation
 # > data[, .(nb = sum(nb)), .(sex, place)]
 # sex  place       nb
-# 1:   M Quebec  1978661
-# 2:   F Quebec  1879691
+# 1:   M Quebec  2030260
+# 2:   F Quebec  1928356
 # 3:   M France 43638405
 # 4:   F France 42967200
 
 # Calculating summaries -----------------------------------------------------------------------
 
-summary_sex_place <- data[year >= 1980 & !is.na(name), .(nb = sum(nb)), .(sex, place, name)]
+summary_sex_place <- data[year >= 1980 & !is.na(name), .(
+  nb = sum(nb),
+  min_prc_sex_place_year = min(prc_sex_place_year),
+  max_prc_sex_place_year = max(prc_sex_place_year),
+  range_prc_sex_place_year = max(prc_sex_place_year) - min(prc_sex_place_year),
+  mean_prc_sex_place_year = mean(prc_sex_place_year),
+  var_prc_sex_place_year = var(prc_sex_place_year),
+  cv_prc_sex_place_year = sd(prc_sex_place_year) / mean(prc_sex_place_year)
+), .(sex, place, name)][, `:=`(
+  prc_sex_place = nb / sum(nb)
+), .(sex, place)]
 
 # Visualising ---------------------------------------------------------------------------------
+
+theme_set(
+  theme_minimal()
+)
 
 ggplot(
   data = data[year >= 1980][summary_sex_place[, {

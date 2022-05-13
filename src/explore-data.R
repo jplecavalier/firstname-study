@@ -1,6 +1,7 @@
 # Loading packages ----------------------------------------------------------------------------
 
 library(data.table)
+library(stringi)
 library(stringr)
 library(ggplot2)
 
@@ -61,6 +62,12 @@ data <- rbindlist(c(
 # Removing raw data
 rm(fr, qc_h, qc_f)
 
+# Removing accents
+data[, name := stri_trans_general(name, "upper; latin-ascii")]
+
+# Removing hyphens
+data[, name := gsub("-", " ", name)]
+
 # Setting classes
 data[, `:=`(
   sex = factor(sex, c("M", "F")),
@@ -70,6 +77,9 @@ data[, `:=`(
 
 # Combining duplicates
 data <- data[, .(nb = sum(nb)), .(sex, place, name, year)]
+
+# Detect multiple name
+data[, multiple_name := str_detect(name, fixed(" "))]
 
 # Calculating statistics
 data[, `:=`(
@@ -105,6 +115,22 @@ theme_set(
   theme_minimal()
 )
 
+# Multiple name trend
+ggplot(
+  data = data[place == "Quebec" & !is.na(name), .(
+    nb = sum(nb)
+  ), .(sex, year, multiple_name)][, .(
+    prc_multiple_name = .SD[multiple_name == TRUE, nb] / sum(nb)
+  ), .(sex, year)],
+  mapping = aes(
+    x = year,
+    y = prc_multiple_name,
+    color = sex
+  )
+) +
+  geom_line()
+
+# Quebec vs France
 ggplot(
   data = data[year >= 1980][summary_sex_place[, {
     .SD[order(-nb)][1:10]

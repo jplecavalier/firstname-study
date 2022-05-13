@@ -111,11 +111,12 @@ update_geom_defaults("line", list(
 
 <!--  IDÉES
 
-- Évolution de la fréquence des prénoms composés
+- Évolution des prénoms composés populaires dans le temps
 - Différentes définitions de distance entre les noms
   - Similitude des lettres
   - Similitude des fréquences
 - Lag France/Qc
 - Expliquer le concept de moyenne mobile
+- Trivia game
 
 -->

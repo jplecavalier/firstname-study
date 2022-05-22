@@ -23,6 +23,9 @@ library(patchwork)
 library(extrafont)
 library(scales)
 library(data.table)
+library(stringi)
+library(stringr)
+library(stringdist)
 library(fontawesome)
 
 set.seed(20220602L)
@@ -120,3 +123,147 @@ update_geom_defaults("line", list(
 - Trivia game
 
 -->
+
+# Pour ceux qui ne sont pas au courant...
+
+--
+
+# .
+
+--
+
+### Je deviendrai papa d'une <span style="color: deeppink;">petite fille</span> en novembre prochain!
+
+---
+
+## Objectifs
+
+- Analyser les tendances de prénom au Québec;
+
+- Développer quelques métriques d'intérêt;
+
+--
+
+- Aider Sarah et moi à trouver un prénom de bébé.
+
+--
+
+### Contraintes
+
+Le prénom doit être...
+
+- original, mais pas trop;
+
+- le plus intemporel possible;
+
+- facilement prononçable en français et en anglais;
+
+- composé uniquement de caractères alphabétiques (aucun accent, espace, trait d'union, etc.)
+
+---
+
+## Données brutes
+
+Les données de prénom à la naissance au Québec (depuis 1980) sont publiées anuellement par Retraite
+Québec<sup>1, 2</sup>.
+
+```{r load-raw-data}
+qc_h <- fread("data/qc-h-1980-2021.csv")
+qc_f <- fread("data/qc-f-1980-2021.csv")
+
+fr <- fread("data/fr-2020.csv")
+```
+
+#### Extrait des données brutes pour les filles
+
+```{r explore-raw-data}
+qc_f[, .(`Prénom/Année`, `1980`, `1981`, `1982`, ` ...` = " ...", `2019`, `2020`, `2021`)]
+```
+
+.footnote[
+[1] https://www.donneesquebec.ca/recherche/dataset/banque-de-prenoms-garcons
+
+[2] https://www.donneesquebec.ca/recherche/dataset/banque-de-prenoms-filles
+]
+
+---
+
+## Transformation des données
+
+On transforme les données avec les manipulations suivantes :
+
+- On combine les données garçons et filles;
+
+- On supprime la ligne des totaux;
+
+- On renomme les colonnes;
+
+- On passe d'un format long à un format large.
+
+```{r transform-data}
+qc <- rbindlist(mapply(
+  FUN = function(data, sex) {
+
+    data[, `:=`(
+      sex = sex
+    )]
+
+    data <- melt(
+      data = data[`Prénom/Année` != "Somme:" | is.na(`Prénom/Année`)],
+      id.vars = c("sex", "Prénom/Année"),
+      measure.vars = as.character(1980:2021),
+      variable.name = "year",
+      value.name = "nb",
+      variable.factor = FALSE
+    )
+
+    setnames(data, "Prénom/Année", "name")
+
+    data[]
+
+  },
+  data = list(qc_h, qc_f),
+  sex = c("M", "F"),
+  SIMPLIFY = FALSE
+))
+
+# Removing raw data
+rm(qc_h, qc_f)
+
+# Setting classes
+qc[, `:=`(
+  sex = factor(sex, c("M", "F")),
+  year = as.integer(year)
+)]
+
+# Combining duplicates
+qc <- qc[, .(nb = sum(nb)), .(sex, name, year)]
+
+# Printing data
+qc[]
+```
+
+---
+
+## Identification des incohérences dans les données
+
+```{r data-inconsistencies-1}
+jp_var <- c("JEAN PHILIPPE", "JEAN-PHILIPPE", "J PHILIPPE", "J-PHILIPPE")
+
+ggplot(
+  data = qc[name %in% jp_var],
+  mapping = aes(
+    x = year,
+    y = nb,
+    color = name
+  )
+) +
+  geom_line() +
+  facet_wrap(
+    facets = vars(sex)
+  )
+```
+
+---
+
+## Nettoyage des données

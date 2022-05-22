@@ -3,6 +3,7 @@
 library(data.table)
 library(stringi)
 library(stringr)
+library(stringdist)
 library(ggplot2)
 
 # Loading raw data ----------------------------------------------------------------------------
@@ -108,6 +109,22 @@ summary_sex_place <- data[year >= 1980 & !is.na(name), .(
 ), .(sex, place, name)][, `:=`(
   prc_sex_place = nb / sum(nb)
 ), .(sex, place)]
+
+
+# Calculating edit distances ------------------------------------------------------------------
+
+group_names <- function(names)
+
+summary_sex_place[sex == "F" & place == "Quebec" & prc_sex_place > 0.001, (sum(stringsimmatrix(name) > 0.8) - .N) / 2L]
+apply(summary_sex_place[sex == "F" & place == "Quebec" & prc_sex_place > 0.0001, stringsimmatrix(name, method = "jw", useNames = "strings") > 0.9], 1, which)
+
+summary_sex_place[prc_sex_place > 0.001, (sum(stringsimmatrix(name) > 0.95) - .N) / 2L]
+apply(summary_sex_place[prc_sex_place > 0.001, stringsimmatrix(name, method = "soundex", useNames = "strings") == 1], 1, which)
+
+summary_sex_place[prc_sex_place > 0.001, .N, .(sex, place)]
+
+stringsim("emilie", "amelie", method = "osa")
+stringsim("claudia", "claudie", method = "osa")
 
 # Visualising ---------------------------------------------------------------------------------
 

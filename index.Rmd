@@ -190,8 +190,6 @@ qc_f[, .(`Prénom/Année`, `1980`, `1981`, `1982`, ` ...` = " ...", `2019`, `202
 
 ## Transformation des données
 
-On transforme les données avec les manipulations suivantes :
-
 - On combine les données garçons et filles;
 
 - On supprime la ligne des totaux;
@@ -245,60 +243,172 @@ qc[]
 
 ---
 
-## Identification des incohérences dans les données
+## Exemple d'incohérence dans les données
 
-```{r data-inconsistencies-jp}
+```{r data-inconsistency}
 jp_var <- c("JEAN PHILIPPE", "JEAN-PHILIPPE", "J PHILIPPE", "J-PHILIPPE")
-
-ggplot(
-  data = qc[name %in% jp_var],
-  mapping = aes(
-    x = year,
-    y = nb,
-    color = name
-  )
-) +
-  geom_line() +
-  facet_wrap(
-    facets = vars(sex)
-  )
-```
-
----
-
-## Identification des incohérences dans les données (suite)
-
-```{r data-inconsistencies-jf}
 jf_var <- c("JEAN FRANCOIS", "JEAN-FRANCOIS", "J FRANCOIS", "J-FRANCOIS")
 
-ggplot(
-  data = qc[name %in% jf_var],
+limits_inconsistency <- qc[sex == "M" & name %in% c(jp_var, jf_var), c(0, max(nb))]
+
+jp_plot <- ggplot(
+  data = qc[sex == "M" & name %in% jp_var],
   mapping = aes(
     x = year,
     y = nb,
-    color = name
+    color = factor(name, levels = jp_var)
   )
 ) +
   geom_line() +
-  facet_wrap(
-    facets = vars(sex)
+  scale_x_continuous(name = NULL) +
+  scale_y_continuous(name = "Nombre de naissances", limits = limits_inconsistency) +
+  scale_color_discrete(name = NULL)
+
+jf_plot <- ggplot(
+  data = qc[sex == "M" & name %in% jf_var],
+  mapping = aes(
+    x = year,
+    y = nb,
+    color = factor(name, levels = jf_var)
   )
+) +
+  geom_line() +
+  scale_x_continuous(name = NULL) +
+  scale_y_continuous(name = NULL, labels = NULL, limits = limits_inconsistency) +
+  scale_color_discrete(name = NULL)
+
+jp_plot + jf_plot
 ```
 
 ---
 
 ## Nettoyage des données
 
+- Les données brutes n'ont déjà aucun signe phonétique (accents, tréma, cédille);
+
 - On remplace les traits d'union par des espaces;
 
-- On complète manuellement les noms tronqués populaires **non ambigus**;
+- On corrige manuellement les prénoms tronqués populaires<sup>3</sup> **non ambigus**;
 
 - Exemples :
-  
-  - J-PHILIPPE **→** J PHILIPPE **→** JEAN PHILIPPE
-  
-  - P-OLIVIER **→** P OLIVIER
+  - **J-PHILIPPE** &#x2192; J PHILIPPE &#x2192; **JEAN PHILIPPE**
+  - **P-OLIVIER** &#x2192; P OLIVIER &#x2192; {PIER OLIVIER, PHILIPPE OLIVIER} &#x2192;
+    **P OLIVIER**
+
+.footnote[
+[3] Pour être corrigé, un prénom doit apparaître au moins 30 fois dans les données.
+]
   
 ```{r clean-data}
-unique(qc[str_sub(name, 2L, 2L) == " "][order(-nb), .(sex, name)])[1:20]
+# Removing hyphens
+qc[, name := gsub("-", " ", name)]
+
+# Edit truncated popular names
+qc[sex == "M" & name == "J SEBASTIEN", name := "JEAN SEBASTIEN"]
+qc[sex == "F" & name == "M CHRISTINE", name := "MARIE CHRISTINE"]
+qc[sex == "M" & name == "J FRANCOIS", name := "JEAN FRANCOIS"]
+qc[sex == "M" & name == "J PHILIPPE", name := "JEAN PHILIPPE"]
+qc[sex == "M" & name == "P OLIVIER", name := "P OLIVIER"]
+qc[sex == "M" & name == "L PHILIPPE", name := "LOUIS PHILIPPE"]
+qc[sex == "M" & name == "J CHRISTOPHE", name := "JEAN CHRISTOPHE"]
+qc[sex == "F" & name == "M MICHELLE", name := "MARIE MICHELLE"]
+qc[sex == "M" & name == "P ALEXANDRE", name := "PIERRE ALEXANDRE"]
+qc[sex == "M" & name == "M ALEXANDRE", name := "MARC ALEXANDRE"]
+qc[sex == "F" & name == "M LAURENCE", name := "MARIE LAURENCE"]
+qc[sex == "M" & name == "P ETIENNE", name := "PIERRE ETIENNE"]
+qc[sex == "M" & name == "F XAVIER", name := "FRANCOIS XAVIER"]
+qc[sex == "M" & name == "C OLIVIER", name := "CHARLES OLIVIER"]
+qc[sex == "M" & name == "C ETIENNE", name := "CHARLES ETIENNE"]
+qc[sex == "F" & name == "M CHANTALE", name := "MARIE CHANTALE"]
+qc[sex == "M" & name == "C ANTOINE", name := "CHARLES ANTOINE"]
+qc[sex == "F" & name == "M MICHELE", name := "MARIE MICHELE"]
+qc[sex == "M" & name == "M PHILIPPE", name := "MARC PHILIPPE"]
+qc[sex == "F" & name == "M HELENE", name := "MARIE HELENE"]
+qc[sex == "F" & name == "M CATHERINE", name := "MARIE CATHERINE"]
+qc[sex == "M" & name == "P ANTOINE", name := "P ANTOINE"]
+qc[sex == "M" & name == "P PHILIPPE", name := "PIERRE PHILIPPE"]
+qc[sex == "M" & name == "J ALEXANDRE", name := "JEAN ALEXANDRE"]
+qc[sex == "M" & name == "C ALEXANDRE", name := "CHARLES ALEXANDRE"]
+qc[sex == "M" & name == "F OLIVIER", name := "F OLIVIER"]
+qc[sex == "M" & name == "M OLIVIER", name := "MARC OLIVIER"]
+qc[sex == "M" & name == "A PHILIPPE", name := "ANDRE PHILIPPE"]
+qc[sex == "F" & name == "M PHILIPPE", name := "MARIE PHILIPPE"]
+qc[sex == "M" & name == "D ALEXANDRE", name := "DAVID ALEXANDRE"]
+qc[sex == "M" & name == "L ALEXANDRE", name := "LOUIS ALEXANDRE"]
+qc[sex == "F" & name == "M CLAUDE", name := "MARIE CLAUDE"]
+
+# Combining duplicates
+qc <- qc[, .(nb = sum(nb)), .(sex, name, year)]
+```
+
+---
+
+## Exemple de prénoms homonymes
+
+```{r data-namesake}
+sarah_sara <- c("SARAH", "SARA")
+catherine_katherine <- c("CATHERINE", "KATHERINE")
+
+limits_namesake <- qc[sex == "F" & name %in% c(sarah_sara, catherine_katherine), c(0, max(nb))]
+
+sarah_sara_plot <- ggplot(
+  data = qc[sex == "F" & name %in% sarah_sara],
+  mapping = aes(
+    x = year,
+    y = nb,
+    color = factor(name, levels = sarah_sara)
+  )
+) +
+  geom_line() +
+  scale_x_continuous(name = NULL) +
+  scale_y_continuous(name = "Nombre de naissances", limits = limits_namesake) +
+  scale_color_discrete(name = NULL)
+
+catherine_katherine_plot <- ggplot(
+  data = qc[sex == "F" & name %in% catherine_katherine],
+  mapping = aes(
+    x = year,
+    y = nb,
+    color = factor(name, levels = catherine_katherine)
+  )
+) +
+  geom_line() +
+  scale_x_continuous(name = NULL) +
+  scale_y_continuous(name = NULL, labels = NULL, limits = limits_namesake) +
+  scale_color_discrete(name = NULL)
+
+sarah_sara_plot + catherine_katherine_plot
+```
+
+---
+
+## Regroupement des prénoms homonymes
+
+- Tâche complexe, particulièrement en français<sup>4</sup>;
+
+- On approxime avec la distance de Levenshtein :
+  
+  - Substitution (+1)
+  - Insertion (+1)
+  - Suppression (+1)
+  
+- On propose des groupements parmi les prénoms populaires<sup>5</sup> avec une distance de
+  Levenshtein inférieure à 3;
+
+- On accepte manuellement les propositions qui sont des homonymes;
+
+- Exemples :
+  - On <span style="color: limegreen;">accepte</span> de regrouper **STEPHANIE** et **STEFANIE**
+    (distance de 2)
+  - On <span style="color: tomato;">refuse</span> de regrouper **AMELIE** et **AMELIA** (distance
+    de 1)
+
+.footnote[
+[4] Certains algorithmes spécifiques aux langues ont été implantés dans la librairie JavaScript
+    [Talisman](https://yomguithereal.github.io/talisman/).
+    
+[5] Pour être considéré, un prénom doit apparaître au moins 30 fois dans les données.
+]
+
+```{r group-data}
 ```

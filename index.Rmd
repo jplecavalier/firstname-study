@@ -247,7 +247,7 @@ qc[]
 
 ## Identification des incohérences dans les données
 
-```{r data-inconsistencies-1}
+```{r data-inconsistencies-jp}
 jp_var <- c("JEAN PHILIPPE", "JEAN-PHILIPPE", "J PHILIPPE", "J-PHILIPPE")
 
 ggplot(
@@ -266,4 +266,39 @@ ggplot(
 
 ---
 
+## Identification des incohérences dans les données (suite)
+
+```{r data-inconsistencies-jf}
+jf_var <- c("JEAN FRANCOIS", "JEAN-FRANCOIS", "J FRANCOIS", "J-FRANCOIS")
+
+ggplot(
+  data = qc[name %in% jf_var],
+  mapping = aes(
+    x = year,
+    y = nb,
+    color = name
+  )
+) +
+  geom_line() +
+  facet_wrap(
+    facets = vars(sex)
+  )
+```
+
+---
+
 ## Nettoyage des données
+
+- On remplace les traits d'union par des espaces;
+
+- On complète manuellement les noms tronqués populaires **non ambigus**;
+
+- Exemples :
+  
+  - J-PHILIPPE **→** J PHILIPPE **→** JEAN PHILIPPE
+  
+  - P-OLIVIER **→** P OLIVIER
+  
+```{r clean-data}
+unique(qc[str_sub(name, 2L, 2L) == " "][order(-nb), .(sex, name)])[1:20]
+```

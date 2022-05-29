@@ -161,6 +161,11 @@ Le prénom doit être...
 - composé uniquement de caractères alphabétiques (aucun accent, espace, trait d'union, etc.)
 
 ---
+class: inverse center middle
+
+# Nettoyage des données
+
+---
 
 ## Données brutes
 
@@ -339,6 +344,9 @@ qc[sex == "F" & name == "M CLAUDE", name := "MARIE CLAUDE"]
 
 # Combining duplicates
 qc <- qc[, .(nb = sum(nb)), .(sex, name, year)]
+
+# Calculating total counts
+qc[, total_nb := sum(nb), .(sex, name)]
 ```
 
 ---
@@ -407,7 +415,7 @@ sarah_sara_plot + catherine_katherine_plot
 [4] Certains algorithmes spécifiques aux langues ont été implantés dans la librairie JavaScript
     [Talisman](https://yomguithereal.github.io/talisman/).
     
-[5] Pour être considéré, un prénom doit apparaître au moins 30 fois dans les données.
+[5] Pour être considéré, un prénom doit apparaître au moins 300 fois dans les données.
 ]
 
 ```{r group-data}
@@ -415,4 +423,207 @@ sarah_sara_plot + catherine_katherine_plot
 #   1. Run src/helper-namesake.R
 #   2. Save namesake.csv as selected-namesake.csv
 #   3. Create a column named 'group' of type boolean
+
+namesakes <- fread("selected-namesake.csv")[!is.na(group)][, group := NULL]
+
+unique_namesakes <- namesakes[, .(
+  name = unique(c(V1, V2))
+), .(sex)][order(sex, name)][, i := 1:.N, .(sex)]
+
+namesakes[unique_namesakes, I1 := i, on = c(V1 = "name", sex = "sex")]
+namesakes[unique_namesakes, I2 := i, on = c(V2 = "name", sex = "sex")]
+setnames(namesakes, "sex", "SEX")
+
+unique_namesakes <- unique_namesakes[, {
+  
+  namesakes_matrix <- diag(length(name)) == TRUE
+  namesakes_matrix[as.matrix(namesakes[SEX == sex, .(I1, I2)])] <- TRUE
+  namesakes_matrix[as.matrix(namesakes[SEX == sex, .(I2, I1)])] <- TRUE
+  
+  namesake_list <- apply(namesakes_matrix, 1, which)
+  while(TRUE) {
+    new <- lapply(namesake_list, function(x) sort(unique(unlist(namesake_list[x]))))
+    if (identical(namesake_list, new)) break
+    namesake_list <- new
+  }
+  namesake_list <- unique(namesake_list)
+  
+  data.table(
+    i = unlist(namesake_list),
+    group = rep(1:length(namesake_list), sapply(namesake_list, length))
+  )
+  
+}, .(sex)][unique_namesakes, name := name, on = .(sex, i)][, i := NULL]
+
+qc[unique_namesakes, group := group, on = .(sex, name)]
+
+qc[!is.na(group), `:=`(
+  group = 1,
+  group_name = .SD[which.max(total_nb), name],
+  group_label = .SD[which.max(total_nb), paste0(name, " +")],
+  group_nb = sum(nb)
+), .(sex, year, group)]
+qc[is.na(group), `:=`(
+  group = 0,
+  group_name = name,
+  group_label = name,
+  group_nb = nb
+)]
+qc[, group := as.logical(group)]
+
+qc_group_details <- qc[group == TRUE, .(
+  name = name,
+  nb = nb,
+  group_prc_name = nb / group_nb,
+  nb_name = .N
+), .(sex, year, group_name)]
+
+# qc[group == FALSE, `:=`(
+#   group_name_perc = 1,
+#   group_name_total_perc = 1
+# )]
+# qc[group == TRUE, group_name_perc := nb / group_nb, .(sex, year, group_name)]
+# qc[group == TRUE, group_name_total_perc := total_nb / group_total_nb, .(sex, group_name)]
+# 
+# qc[, group_total_nb := sum(nb), .(sex, group_name)]
 ```
+
+---
+class: inverse center middle
+
+# Analyse des tendances
+
+```{r gen-data}
+qc_gen_summary <- function(year_begin, year_end, top = 10L) {
+  
+  qc[year >= year_begin & year <= year_end, .(
+    nb = sum(nb)
+  ), .(sex, group_label)][, .(
+    group_label = group_label,
+    nb = nb,
+    rnk = rank(-nb, ties.method = "min")
+  ), .(sex)][rnk <= top]
+  
+}
+
+qc_gen_data <- function(year_begin, year_end, top = 10L) {
+  
+  gen_summary <- qc[year >= year_begin & year <= year_end, .(
+    nb = sum(nb)
+  ), .(sex, group_label)][, .(
+    group_label = group_label,
+    nb_gen = nb,
+    rnk_gen = rank(-nb, ties.method = "min")
+  ), .(sex)][rnk_gen <= top]
+  
+  # A FINALISER
+  qc[name == group_name][gen_summary, flag := TRUE, on = .(sex, group_label)][flag == TRUE][, flag := NULL]
+  
+}
+
+qc_gen_data(1981L, 1996L)
+
+qc_gen_data <- qc[name == group_name][unique(rbindlist(list(
+  qc_gen_summary(1981L, 1996L),
+  qc_gen_summary(1997L, 2012L),
+  qc_gen_summary(2013L, 2028L)
+))[, .(sex, group_label)]), flag := TRUE, on = .(sex, group_label)][flag == TRUE][, flag := NULL]
+
+gen_limits <- qc_gen_data[, c(0, max(group_nb))]
+```
+
+---
+
+## La génération Y (1980 - 1996)
+
+```{r gen-y}
+
+```
+
+---
+
+## La génération Z (1997 - 2012)
+
+---
+
+## La génération Alpha (2013 - 2021)
+
+---
+
+## Homonymes tolérables
+
+```{r namesake-bearable}
+namesake_bearable_1 <- qc[sex == "M" & group_name == "VICTOR"]
+namesake_bearable_2 <- qc[sex == "F" & group_name == "KIM"]
+
+limits_namesake_bearable <- rbindlist(list(namesake_bearable_1, namesake_bearable_2))[, c(0, max(nb))]
+
+namesake_bearable_1_plot <- ggplot(
+  data = namesake_bearable_1,
+  mapping = aes(
+    x = year,
+    y = nb,
+    color = reorder(name, -total_nb)
+  )
+) +
+  geom_line() +
+  scale_x_continuous(name = NULL) +
+  scale_y_continuous(name = "Nombre de naissances", limits = limits_namesake_bearable) +
+  scale_color_discrete(name = NULL)
+
+namesake_bearable_2_plot <- ggplot(
+  data = namesake_bearable_2,
+  mapping = aes(
+    x = year,
+    y = nb,
+    color = reorder(name, -total_nb)
+  )
+) +
+  geom_line() +
+  scale_x_continuous(name = NULL) +
+  scale_y_continuous(name = NULL, labels = NULL, limits = limits_namesake_bearable) +
+  scale_color_discrete(name = NULL)
+
+namesake_bearable_1_plot + namesake_bearable_2_plot
+```
+
+---
+
+## Homonymes pénibles
+
+```{r namesake-painful}
+namesake_painful_1 <- qc[sex == "M" & group_name == "HAYDEN"]
+namesake_painful_2 <- qc[sex == "F" & group_name == "CAROLANE"]
+
+limits_namesake_painful <- rbindlist(list(namesake_painful_1, namesake_painful_2))[, c(0, max(nb))]
+
+namesake_painful_1_plot <- ggplot(
+  data = namesake_painful_1,
+  mapping = aes(
+    x = year,
+    y = nb,
+    color = reorder(name, -total_nb)
+  )
+) +
+  geom_line() +
+  scale_x_continuous(name = NULL) +
+  scale_y_continuous(name = "Nombre de naissances", limits = limits_namesake_painful) +
+  scale_color_discrete(name = NULL)
+
+namesake_painful_2_plot <- ggplot(
+  data = namesake_painful_2,
+  mapping = aes(
+    x = year,
+    y = nb,
+    color = reorder(name, -total_nb)
+  )
+) +
+  geom_line() +
+  scale_x_continuous(name = NULL) +
+  scale_y_continuous(name = NULL, labels = NULL, limits = limits_namesake_painful) +
+  scale_color_discrete(name = NULL)
+
+namesake_painful_1_plot + namesake_painful_2_plot
+```
+
+

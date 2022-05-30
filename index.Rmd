@@ -493,7 +493,7 @@ gen_plot_template <- function(year_begin, year_end, top = 5L) {
   data = data[sex == "M"],
   mapping = aes(
     x = year,
-    y = nb,
+    y = group_nb,
     color = reorder(group_label, rnk_gen)
   )
 ) +
@@ -512,7 +512,7 @@ female_plot <- ggplot(
   data = data[sex == "F"],
   mapping = aes(
     x = year,
-    y = nb,
+    y = group_nb,
     color = reorder(group_label, rnk_gen)
   )
 ) +
@@ -569,36 +569,191 @@ class: inverse center middle
 
 - On utilise une moyenne mobile 3 ans.
 
----
+```{r normalize-data}
+# Compute percentages
+qc[, prc_year := nb / sum(nb), .(sex, year)]
+qc[, group_prc_year := group_nb / sum(nb), .(sex, year)]
 
-## Normalisation et lissage des données (suite)
+# Compute moving averages
+qc[, c("prc_year_before", "prc_year_after") := shift(prc_year, c(1, -1)), .(sex, name)]
+qc[, c("group_prc_year_before", "group_prc_year_after") := shift(group_prc_year, c(1, -1)), .(sex, name)]
+qc[, `:=`(
+  prc_year_ma = (prc_year_before + prc_year + prc_year_after) / 3L,
+  group_prc_year_ma = (group_prc_year_before + group_prc_year + group_prc_year_after) / 3L
+)]
 
-```{r moving-average-before}
+# Summary
+summary_qc <- qc[, .(
+  nb = sum(nb),
+  min_prc_year_ma = min(prc_year_ma, na.rm = TRUE),
+  max_prc_year_ma = max(prc_year, na.rm = TRUE),
+  range_prc_year_ma = max(prc_year, na.rm = TRUE) - min(prc_year, na.rm = TRUE),
+  mean_prc_year_ma = mean(prc_year, na.rm = TRUE),
+  var_prc_year_ma = var(prc_year, na.rm = TRUE),
+  cv_prc_year_ma = sd(prc_year, na.rm = TRUE) / mean(prc_year, na.rm = TRUE),
+  group_nb = sum(group_nb),
+  group_min_prc_year_ma = min(group_prc_year_ma, na.rm = TRUE),
+  group_max_prc_year_ma = max(group_prc_year, na.rm = TRUE),
+  group_range_prc_year_ma = max(group_prc_year, na.rm = TRUE) - min(group_prc_year, na.rm = TRUE),
+  group_mean_prc_year_ma = mean(group_prc_year, na.rm = TRUE),
+  group_var_prc_year_ma = var(group_prc_year, na.rm = TRUE),
+  group_cv_prc_year_ma = sd(group_prc_year, na.rm = TRUE) / mean(group_prc_year, na.rm = TRUE)
+), .(sex, name, group, group_name, group_label)][, `:=`(
+  prc = nb / sum(nb),
+  group_prc = group_nb / sum(nb)
+), .(sex)]
 ```
 
 ---
 
 ## Normalisation et lissage des données (suite)
 
-```{r moving-average-after}
+```{r original}
+normalize_male_name <- summary_qc[sex == "M" & name == group_name][order(-group_nb)][sample(20:50, 5L), group_name]
+normalize_female_name <- summary_qc[sex == "F" & name == group_name][order(-group_nb)][sample(20:50, 5L), group_name]
+
+normalize_male_data <- qc[sex == "M" & group_name %in% normalize_male_name]
+normalize_female_data <- qc[sex == "F" & group_name %in% normalize_female_name]
+
+limits_normalize <- rbindlist(list(normalize_male_data, normalize_female_data))[, c(0, max(group_nb))]
+
+normalize_male_plot <- ggplot(
+  data = normalize_male_data,
+  mapping = aes(
+    x = year,
+    y = group_nb,
+    color = group_label
+  )
+) +
+  geom_line() +
+  scale_x_continuous(name = NULL) +
+  scale_y_continuous(name = "Nombre de naissances", limits = limits_normalize) +
+  scale_color_discrete(name = NULL, guide = guide_legend(label.position = "bottom")) +
+  labs(title = "Garçons")
+
+normalize_female_plot <- ggplot(
+  data = normalize_female_data,
+  mapping = aes(
+    x = year,
+    y = group_nb,
+    color = group_label
+  )
+) +
+  geom_line() +
+  scale_x_continuous(name = NULL) +
+  scale_y_continuous(name = NULL, labels = NULL, limits = limits_normalize) +
+  scale_color_discrete(name = NULL, guide = guide_legend(label.position = "bottom")) +
+  labs(title = "Filles")
+
+normalize_male_plot + normalize_female_plot
 ```
 
 ---
 
-## Mesures de stabilité
+## Normalisation et lissage des données (suite)
+
+```{r normalize}
+limits_normalize_prc <- rbindlist(list(normalize_male_data, normalize_female_data))[, c(0, max(group_prc_year))]
+
+normalize_male_plot_prc <- ggplot(
+  data = normalize_male_data,
+  mapping = aes(
+    x = year,
+    y = group_prc_year,
+    color = group_label
+  )
+) +
+  geom_line() +
+  scale_x_continuous(name = NULL) +
+  scale_y_continuous(name = "Pourcentage des naissances", limits = limits_normalize_prc, labels = label_percent()) +
+  scale_color_discrete(name = NULL, guide = guide_legend(label.position = "bottom")) +
+  labs(title = "Garçons")
+
+normalize_female_plot_prc <- ggplot(
+  data = normalize_female_data,
+  mapping = aes(
+    x = year,
+    y = group_prc_year,
+    color = group_label
+  )
+) +
+  geom_line() +
+  scale_x_continuous(name = NULL) +
+  scale_y_continuous(name = NULL, labels = NULL, limits = limits_normalize_prc) +
+  scale_color_discrete(name = NULL, guide = guide_legend(label.position = "bottom")) +
+  labs(title = "Filles")
+
+normalize_male_plot_prc + normalize_female_plot_prc
+```
+
+---
+
+## Normalisation et lissage des données (suite)
+
+```{r moving-average}
+normalize_male_plot_ma <- ggplot(
+  data = normalize_male_data,
+  mapping = aes(
+    x = year,
+    y = group_prc_year_ma,
+    color = group_label
+  )
+) +
+  geom_line(
+    mapping = aes(
+      x = year,
+      y = group_prc_year,
+      color = group_label
+    ),
+    alpha = 0.3
+  ) +
+  geom_line() +
+  scale_x_continuous(name = NULL) +
+  scale_y_continuous(name = "Pourcentage des naissances", limits = limits_normalize_prc, labels = label_percent()) +
+  scale_color_discrete(name = NULL, guide = guide_legend(label.position = "bottom")) +
+  labs(title = "Garçons")
+
+normalize_female_plot_ma <- ggplot(
+  data = normalize_female_data,
+  mapping = aes(
+    x = year,
+    y = group_prc_year_ma,
+    color = group_label
+  )
+) +
+  geom_line(
+    mapping = aes(
+      x = year,
+      y = group_prc_year,
+      color = group_label
+    ),
+    alpha = 0.3
+  ) +
+  geom_line() +
+  scale_x_continuous(name = NULL) +
+  scale_y_continuous(name = NULL, labels = NULL, limits = limits_normalize_prc) +
+  scale_color_discrete(name = NULL, guide = guide_legend(label.position = "bottom")) +
+  labs(title = "Filles")
+
+normalize_male_plot_ma + normalize_female_plot_ma
+```
+
+---
+
+## Mesure de stabilité
 
 On utilise le coefficient de variation (CV) des prénoms dans le temps où $$CV = \frac{\sigma}{\mu}$$
 
 ---
 
-## Mesures de stabilité (suite)
+## Mesure de stabilité (suite)
 
 ```{r low-stability}
 ```
 
 ---
 
-## Mesures de stabilité (suite)
+## Mesure de stabilité (suite)
 
 ```{r high-stability}
 ```

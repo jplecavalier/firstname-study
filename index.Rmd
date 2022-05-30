@@ -13,7 +13,6 @@ output:
       ratio: 16:9
       countIncrementalSlides: false
 ---
-class: inverse center middle
 
 ```{r setup, include=FALSE}
 library(knitr)
@@ -124,41 +123,11 @@ update_geom_defaults("line", list(
 
 -->
 
-# Pour ceux qui ne sont pas au courant...
-
---
-
-# .
-
---
-
-### Je deviendrai papa d'une <span style="color: deeppink;">petite fille</span> en novembre prochain!
-
----
-
 ## Objectifs
 
 - Analyser les tendances de prénom au Québec;
 
-- Développer quelques métriques d'intérêt;
-
---
-
-- Aider Sarah et moi à trouver un prénom de bébé.
-
---
-
-### Contraintes
-
-Le prénom doit être...
-
-- original, mais pas trop;
-
-- le plus intemporel possible;
-
-- facilement prononçable en français et en anglais;
-
-- composé uniquement de caractères alphabétiques (aucun accent, espace, trait d'union, etc.)
+- Développer quelques métriques d'intérêt.
 
 ---
 class: inverse center middle
@@ -201,7 +170,7 @@ qc_f[, .(`Prénom/Année`, `1980`, `1981`, `1982`, ` ...` = " ...", `2019`, `202
 
 - On renomme les colonnes;
 
-- On passe d'un format long à un format large.
+- On passe d'un format large à un format long.
 
 ```{r transform-data}
 qc <- rbindlist(mapply(
@@ -267,7 +236,7 @@ jp_plot <- ggplot(
   geom_line() +
   scale_x_continuous(name = NULL) +
   scale_y_continuous(name = "Nombre de naissances", limits = limits_inconsistency) +
-  scale_color_discrete(name = NULL)
+  scale_color_discrete(name = NULL, guide = guide_legend(label.position = "bottom"))
 
 jf_plot <- ggplot(
   data = qc[sex == "M" & name %in% jf_var],
@@ -280,7 +249,7 @@ jf_plot <- ggplot(
   geom_line() +
   scale_x_continuous(name = NULL) +
   scale_y_continuous(name = NULL, labels = NULL, limits = limits_inconsistency) +
-  scale_color_discrete(name = NULL)
+  scale_color_discrete(name = NULL, guide = guide_legend(label.position = "bottom"))
 
 jp_plot + jf_plot
 ```
@@ -370,7 +339,7 @@ sarah_sara_plot <- ggplot(
   geom_line() +
   scale_x_continuous(name = NULL) +
   scale_y_continuous(name = "Nombre de naissances", limits = limits_namesake) +
-  scale_color_discrete(name = NULL)
+  scale_color_discrete(name = NULL, guide = guide_legend(label.position = "bottom"))
 
 catherine_katherine_plot <- ggplot(
   data = qc[sex == "F" & name %in% catherine_katherine],
@@ -383,7 +352,7 @@ catherine_katherine_plot <- ggplot(
   geom_line() +
   scale_x_continuous(name = NULL) +
   scale_y_continuous(name = NULL, labels = NULL, limits = limits_namesake) +
-  scale_color_discrete(name = NULL)
+  scale_color_discrete(name = NULL, guide = guide_legend(label.position = "bottom"))
 
 sarah_sara_plot + catherine_katherine_plot
 ```
@@ -494,19 +463,7 @@ class: inverse center middle
 # Analyse des tendances
 
 ```{r gen-data}
-qc_gen_summary <- function(year_begin, year_end, top = 10L) {
-  
-  qc[year >= year_begin & year <= year_end, .(
-    nb = sum(nb)
-  ), .(sex, group_label)][, .(
-    group_label = group_label,
-    nb = nb,
-    rnk = rank(-nb, ties.method = "min")
-  ), .(sex)][rnk <= top]
-  
-}
-
-qc_gen_data <- function(year_begin, year_end, top = 10L) {
+qc_gen_data <- function(year_begin, year_end, top = 5L) {
   
   gen_summary <- qc[year >= year_begin & year <= year_end, .(
     nb = sum(nb)
@@ -516,114 +473,260 @@ qc_gen_data <- function(year_begin, year_end, top = 10L) {
     rnk_gen = rank(-nb, ties.method = "min")
   ), .(sex)][rnk_gen <= top]
   
-  # A FINALISER
-  qc[name == group_name][gen_summary, flag := TRUE, on = .(sex, group_label)][flag == TRUE][, flag := NULL]
+  gen_data <- qc[name == group_name]
+  gen_data[gen_summary, `:=`(
+    flag = TRUE,
+    rnk_gen = rnk_gen
+  ), on = .(sex, group_label)]
+  gen_data[flag == TRUE][, flag := NULL][]
   
 }
 
-qc_gen_data(1981L, 1996L)
+gen_limits <- c(0, 2500)
 
-qc_gen_data <- qc[name == group_name][unique(rbindlist(list(
-  qc_gen_summary(1981L, 1996L),
-  qc_gen_summary(1997L, 2012L),
-  qc_gen_summary(2013L, 2028L)
-))[, .(sex, group_label)]), flag := TRUE, on = .(sex, group_label)][flag == TRUE][, flag := NULL]
+gen_plot_template <- function(year_begin, year_end, top = 5L) {
+  
+  data <- qc_gen_data(year_begin, year_end, top)
+  xint <- c(year_begin - 0.5, if (year_end > 2021) NULL else year_end + 0.5)
+  
+  male_plot <- ggplot(
+  data = data[sex == "M"],
+  mapping = aes(
+    x = year,
+    y = nb,
+    color = reorder(group_label, rnk_gen)
+  )
+) +
+  geom_vline(
+    xintercept = xint,
+    linetype = "dashed",
+    color = theme_xaringan_get_value("text_color")
+  ) +
+  geom_line() +
+  scale_x_continuous(name = NULL) +
+  scale_y_continuous(name = "Nombre de naissances", limits = gen_limits) +
+  scale_color_discrete(name = NULL, guide = guide_legend(label.position = "bottom")) +
+  labs(title = "Garçons")
 
-gen_limits <- qc_gen_data[, c(0, max(group_nb))]
+female_plot <- ggplot(
+  data = data[sex == "F"],
+  mapping = aes(
+    x = year,
+    y = nb,
+    color = reorder(group_label, rnk_gen)
+  )
+) +
+  geom_vline(
+    xintercept = xint,
+    linetype = "dashed",
+    color = theme_xaringan_get_value("text_color")
+  ) +
+  geom_line() +
+  scale_x_continuous(name = NULL) +
+  scale_y_continuous(name = NULL, labels = NULL, limits = gen_limits) +
+  scale_color_discrete(name = NULL, guide = guide_legend(label.position = "bottom")) +
+  labs(title = "Filles")
+
+male_plot + female_plot
+  
+}
 ```
 
 ---
 
-## La génération Y (1980 - 1996)
+## La génération Y (1981-1996)
 
 ```{r gen-y}
-
+gen_plot_template(1981L, 1996L)
 ```
 
 ---
 
-## La génération Z (1997 - 2012)
+## La génération Z (1997-2012)
 
----
-
-## La génération Alpha (2013 - 2021)
-
----
-
-## Homonymes tolérables
-
-```{r namesake-bearable}
-namesake_bearable_1 <- qc[sex == "M" & group_name == "VICTOR"]
-namesake_bearable_2 <- qc[sex == "F" & group_name == "KIM"]
-
-limits_namesake_bearable <- rbindlist(list(namesake_bearable_1, namesake_bearable_2))[, c(0, max(nb))]
-
-namesake_bearable_1_plot <- ggplot(
-  data = namesake_bearable_1,
-  mapping = aes(
-    x = year,
-    y = nb,
-    color = reorder(name, -total_nb)
-  )
-) +
-  geom_line() +
-  scale_x_continuous(name = NULL) +
-  scale_y_continuous(name = "Nombre de naissances", limits = limits_namesake_bearable) +
-  scale_color_discrete(name = NULL)
-
-namesake_bearable_2_plot <- ggplot(
-  data = namesake_bearable_2,
-  mapping = aes(
-    x = year,
-    y = nb,
-    color = reorder(name, -total_nb)
-  )
-) +
-  geom_line() +
-  scale_x_continuous(name = NULL) +
-  scale_y_continuous(name = NULL, labels = NULL, limits = limits_namesake_bearable) +
-  scale_color_discrete(name = NULL)
-
-namesake_bearable_1_plot + namesake_bearable_2_plot
+```{r gen-z}
+gen_plot_template(1997L, 2012L)
 ```
 
 ---
 
-## Homonymes pénibles
+## La génération Alpha (2013-2028)
 
-```{r namesake-painful}
-namesake_painful_1 <- qc[sex == "M" & group_name == "HAYDEN"]
-namesake_painful_2 <- qc[sex == "F" & group_name == "CAROLANE"]
-
-limits_namesake_painful <- rbindlist(list(namesake_painful_1, namesake_painful_2))[, c(0, max(nb))]
-
-namesake_painful_1_plot <- ggplot(
-  data = namesake_painful_1,
-  mapping = aes(
-    x = year,
-    y = nb,
-    color = reorder(name, -total_nb)
-  )
-) +
-  geom_line() +
-  scale_x_continuous(name = NULL) +
-  scale_y_continuous(name = "Nombre de naissances", limits = limits_namesake_painful) +
-  scale_color_discrete(name = NULL)
-
-namesake_painful_2_plot <- ggplot(
-  data = namesake_painful_2,
-  mapping = aes(
-    x = year,
-    y = nb,
-    color = reorder(name, -total_nb)
-  )
-) +
-  geom_line() +
-  scale_x_continuous(name = NULL) +
-  scale_y_continuous(name = NULL, labels = NULL, limits = limits_namesake_painful) +
-  scale_color_discrete(name = NULL)
-
-namesake_painful_1_plot + namesake_painful_2_plot
+```{r gen-alpha}
+gen_plot_template(2013L, 2028L)
 ```
 
+---
+class: inverse center middle
 
+# Métriques d'intérêt
+
+---
+
+## Normalisation et lissage des données
+
+- On utilise le pourcentage (%) des naissances à chaque année;
+
+- On utilise une moyenne mobile 3 ans.
+
+---
+
+## Normalisation et lissage des données (suite)
+
+```{r moving-average-before}
+```
+
+---
+
+## Normalisation et lissage des données (suite)
+
+```{r moving-average-after}
+```
+
+---
+
+## Mesures de stabilité
+
+On utilise le coefficient de variation (CV) des prénoms dans le temps où $$CV = \frac{\sigma}{\mu}$$
+
+---
+
+## Mesures de stabilité (suite)
+
+```{r low-stability}
+```
+
+---
+
+## Mesures de stabilité (suite)
+
+```{r high-stability}
+```
+
+---
+class: inverse center middle
+
+# Pour ceux qui ne sont pas au courant...
+
+--
+
+# .
+
+--
+
+### Je deviendrai papa d'une <span style="color: deeppink;">petite fille</span> en novembre prochain!
+
+---
+
+## Objectif réel
+
+- Aider Sarah et moi à trouver un prénom de bébé!
+
+--
+
+### Contraintes
+
+Le prénom doit être...
+
+- original, mais pas trop;
+
+- le plus intemporel possible;
+
+- facilement prononçable en français et en anglais;
+
+- composé uniquement de caractères alphabétiques (aucun accent, espace, trait d'union, etc.);
+
+- facile à écrire pour un inconnu.
+
+---
+
+## Original, mais pas trop
+
+---
+
+## Le plus intemporel possible
+
+---
+
+## Facilement prononçable en français et en anglais
+
+---
+
+## Composé uniquement de caractères alphabétiques
+
+---
+
+## Facile à écrire pour un inconnu
+
+---
+
+## Facile à écrire pour un inconnu (suite)
+
+```{r namesake-criteria}
+namesake_bearable <- qc[sex == "F" & group_name == "KIM"]
+namesake_painful <- qc[sex == "F" & group_name == "CAROLANE"]
+
+limits_namesake <- rbindlist(list(namesake_bearable, namesake_painful))[, c(0, max(nb))]
+
+namesake_bearable_plot <- ggplot(
+  data = namesake_bearable,
+  mapping = aes(
+    x = year,
+    y = nb,
+    color = reorder(name, -total_nb)
+  )
+) +
+  geom_line() +
+  scale_x_continuous(name = NULL) +
+  scale_y_continuous(name = "Nombre de naissances", limits = limits_namesake) +
+  scale_color_discrete(name = NULL, guide = guide_legend(label.position = "bottom")) +
+  labs(title = "Acceptable")
+
+namesake_painful_plot <- ggplot(
+  data = namesake_painful,
+  mapping = aes(
+    x = year,
+    y = nb,
+    color = reorder(name, -total_nb)
+  )
+) +
+  geom_line() +
+  scale_x_continuous(name = NULL) +
+  scale_y_continuous(name = NULL, labels = NULL, limits = limits_namesake) +
+  scale_color_discrete(name = NULL, guide = guide_legend(label.position = "bottom", nrow = 1L)) +
+  labs(title = "Innacceptable")
+
+namesake_bearable_plot + namesake_painful_plot
+```
+
+---
+
+## Prénoms potentiels
+
+---
+class: thanks-page
+background-image: url(logo.svg)
+background-size: 320px
+background-position: 5% 90%
+
+# Merci!
+
+.pull-right[
+
+<a href="mailto:jplecavalier@me.com">
+  `r fa("paper-plane", fill = theme_xaringan_get_value("text_color"))` jplecavalier@me.com
+</a>
+
+<a href="https://www.linkedin.com/in/jplecavalier/">
+  `r fa("linkedin-in", fill = theme_xaringan_get_value("text_color"))` @jplecavalier
+</a>
+
+<a href="https://jplecavalier.rbind.io/">
+  `r fa("globe", fill = theme_xaringan_get_value("text_color"))` jplecavalier.rbind.io
+</a>
+
+<a href="https://github.com/jplecavalier/firstname-study">
+  `r fa("github", fill = theme_xaringan_get_value("text_color"))` Code source
+</a>
+
+]

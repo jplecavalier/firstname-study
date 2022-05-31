@@ -429,7 +429,7 @@ qc[unique_namesakes, group := group, on = .(sex, name)]
 qc[!is.na(group), `:=`(
   group = 1,
   group_name = .SD[which.max(total_nb), name],
-  group_label = .SD[which.max(total_nb), paste0(name, " +")],
+  group_label = paste0(.SD[which.max(total_nb), name], " (+", .N - 1L, ")"),
   group_nb = sum(nb)
 ), .(sex, year, group)]
 qc[is.na(group), `:=`(
@@ -446,15 +446,6 @@ qc_group_details <- qc[group == TRUE, .(
   group_prc_name = nb / group_nb,
   nb_name = .N
 ), .(sex, year, group_name)]
-
-# qc[group == FALSE, `:=`(
-#   group_name_perc = 1,
-#   group_name_total_perc = 1
-# )]
-# qc[group == TRUE, group_name_perc := nb / group_nb, .(sex, year, group_name)]
-# qc[group == TRUE, group_name_total_perc := total_nb / group_total_nb, .(sex, group_name)]
-# 
-# qc[, group_total_nb := sum(nb), .(sex, group_name)]
 ```
 
 ---
@@ -606,7 +597,7 @@ summary_qc <- qc[, .(
 
 ---
 
-## Normalisation et lissage des données (suite)
+## Données classiques
 
 ```{r original}
 normalize_male_name <- summary_qc[sex == "M" & name == group_name][order(-group_nb)][sample(20:50, 5L), group_name]
@@ -650,7 +641,7 @@ normalize_male_plot + normalize_female_plot
 
 ---
 
-## Normalisation et lissage des données (suite)
+## Données normalisées par naissances annuelles
 
 ```{r normalize}
 limits_normalize_prc <- rbindlist(list(normalize_male_data, normalize_female_data))[, c(0, max(group_prc_year))]
@@ -688,7 +679,7 @@ normalize_male_plot_prc + normalize_female_plot_prc
 
 ---
 
-## Normalisation et lissage des données (suite)
+## Données lissées par moyenne mobile 3 ans
 
 ```{r moving-average}
 normalize_male_plot_ma <- ggplot(
@@ -746,16 +737,87 @@ On utilise le coefficient de variation (CV) des prénoms dans le temps où $$CV 
 
 ---
 
-## Mesure de stabilité (suite)
+## Stabilité faible
 
 ```{r low-stability}
+low_stability_names <- summary_qc[group_nb > 2000 & name == group_name][order(-group_cv_prc_year_ma), .(
+  group_name = group_name[1:5],
+  group_label = group_label[1:5],
+  group_max_prc_year_ma = group_max_prc_year_ma[1:5]
+), .(sex)]
+high_stability_names <- summary_qc[group_nb > 2000 & name == group_name][order(group_cv_prc_year_ma), .(
+  group_name = group_name[1:5],
+  group_label = group_label[1:5],
+  group_max_prc_year_ma = group_max_prc_year_ma[1:5]
+), .(sex)]
+
+stability_limits <- rbindlist(list(low_stability_names, high_stability_names))[, c(0, max(group_max_prc_year_ma))]
+
+stability_male_plot_low <- ggplot(
+  data = qc[sex == "M" & group_name %in% low_stability_names[sex == "M", group_name]],
+  mapping = aes(
+    x = year,
+    y = group_prc_year_ma,
+    color = factor(group_label, levels = low_stability_names[sex == "M", group_label])
+  )
+) +
+  geom_line() +
+  scale_x_continuous(name = NULL) +
+  scale_y_continuous(name = "Pourcentage des naissances", limits = stability_limits, labels = label_percent()) +
+  scale_color_discrete(name = NULL, guide = guide_legend(label.position = "bottom")) +
+  labs(title = "Garçons")
+
+stability_female_plot_low <- ggplot(
+  data = qc[sex == "F" & group_name %in% low_stability_names[sex == "F", group_name]],
+  mapping = aes(
+    x = year,
+    y = group_prc_year_ma,
+    color = factor(group_label, levels = low_stability_names[sex == "F", group_label])
+  )
+) +
+  geom_line() +
+  scale_x_continuous(name = NULL) +
+  scale_y_continuous(name = NULL, labels = NULL, limits = stability_limits) +
+  scale_color_discrete(name = NULL, guide = guide_legend(label.position = "bottom")) +
+  labs(title = "Filles")
+
+stability_male_plot_low + stability_female_plot_low
 ```
 
 ---
 
-## Mesure de stabilité (suite)
+## Stabilité élevée
 
 ```{r high-stability}
+stability_male_plot_high <- ggplot(
+  data = qc[sex == "M" & group_name %in% high_stability_names[sex == "M", group_name]],
+  mapping = aes(
+    x = year,
+    y = group_prc_year_ma,
+    color = factor(group_label, levels = high_stability_names[sex == "M", group_label])
+  )
+) +
+  geom_line() +
+  scale_x_continuous(name = NULL) +
+  scale_y_continuous(name = "Pourcentage des naissances", limits = stability_limits, labels = label_percent()) +
+  scale_color_discrete(name = NULL, guide = guide_legend(label.position = "bottom")) +
+  labs(title = "Garçons")
+
+stability_female_plot_high <- ggplot(
+  data = qc[sex == "F" & group_name %in% high_stability_names[sex == "F", group_name]],
+  mapping = aes(
+    x = year,
+    y = group_prc_year_ma,
+    color = factor(group_label, levels = high_stability_names[sex == "F", group_label])
+  )
+) +
+  geom_line() +
+  scale_x_continuous(name = NULL) +
+  scale_y_continuous(name = NULL, labels = NULL, limits = stability_limits) +
+  scale_color_discrete(name = NULL, guide = guide_legend(label.position = "bottom")) +
+  labs(title = "Filles")
+
+stability_male_plot_high + stability_female_plot_high
 ```
 
 ---
@@ -793,29 +855,65 @@ Le prénom doit être...
 
 - facile à écrire pour un inconnu.
 
+```{r options-jpl}
+options_jpl <- qc_gen_data(2013, 2028, 100)[sex == "F"]
+
+options_matrix_plot <- ggplot(
+  mapping = aes(
+    x = x,
+    y = y,
+    label = group_name,
+    alpha = active
+  )
+) +
+  scale_x_continuous(
+    name = NULL,
+    labels = NULL
+  ) +
+  scale_y_continuous(
+    name = NULL,
+    labels = NULL
+  ) +
+  scale_alpha_manual(
+    values = c(`TRUE` = 1, `FALSE` = 0.2),
+    guide = guide_none()
+  ) +
+  theme(
+    panel.grid = element_blank()
+  )
+```
+
 ---
 
 ## Original, mais pas trop
 
----
+- Dans le top 100 de la génération Alpha
 
-## Le plus intemporel possible
-
----
-
-## Facilement prononçable en français et en anglais
+- Hors du top 5 de la génération Alpha
 
 ---
 
-## Composé uniquement de caractères alphabétiques
+## Original, mais pas trop
+
+```{r drop-top-10}
+options_matrix <- unique(options_jpl[, .(rnk_gen, group_name, active = TRUE)])[order(rnk_gen)]
+options_matrix[, `:=`(
+  x = rep(1:10, times = 10L),
+  y = rep(10:1, each = 10L)
+)]
+
+options_matrix[rnk_gen <= 5, active := FALSE]
+
+options_matrix_plot +
+  geom_text(
+    data = options_matrix,
+    color = theme_xaringan_get_value("text_color")
+  )
+```
 
 ---
 
 ## Facile à écrire pour un inconnu
-
----
-
-## Facile à écrire pour un inconnu (suite)
 
 ```{r namesake-criteria}
 namesake_bearable <- qc[sex == "F" & group_name == "KIM"]
@@ -856,7 +954,19 @@ namesake_bearable_plot + namesake_painful_plot
 
 ---
 
-## Prénoms potentiels
+## Facile à écrire pour un inconnu
+
+---
+
+## Composé uniquement de caractères alphabétiques
+
+---
+
+## Facilement prononçable en français et en anglais
+
+---
+
+## Le plus intemporel possible
 
 ---
 class: thanks-page

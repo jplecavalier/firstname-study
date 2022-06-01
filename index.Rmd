@@ -113,9 +113,9 @@ update_geom_defaults("line", list(
 
 ## Objectifs
 
-- Analyser les tendances de prénom au Québec;
+- Analyser les **tendances** de prénom au Québec;
 
-- Développer quelques métriques d'intérêt.
+- Développer quelques **métriques** d'intérêt.
 
 ---
 class: inverse center middle
@@ -126,8 +126,8 @@ class: inverse center middle
 
 ## Données brutes
 
-Les données de prénom à la naissance au Québec (depuis 1980) sont publiées anuellement par Retraite
-Québec<sup>1, 2</sup>.
+Les données de prénom à la naissance au Québec (depuis 1980) sont publiées anuellement par
+[Retraite Québec](https://www.retraitequebec.gouv.qc.ca)<sup>1, 2</sup>.
 
 ```{r load-raw-data}
 qc_h <- fread("data/qc-h-1980-2021.csv")
@@ -152,6 +152,7 @@ qc_f[, .(`Prénom/Année`, `1980`, `1981`, `1982`, ` ...` = " ...", `2019`, `202
 
 ## Transformation des données
 
+.pull-left[
 - On combine les données garçons et filles;
 
 - On supprime la ligne des totaux;
@@ -159,6 +160,10 @@ qc_f[, .(`Prénom/Année`, `1980`, `1981`, `1982`, ` ...` = " ...", `2019`, `202
 - On renomme les colonnes;
 
 - On passe d'un format large à un format long.
+]
+
+.pull-right[
+#### Extrait des données transformées
 
 ```{r transform-data}
 qc <- rbindlist(mapply(
@@ -202,6 +207,7 @@ qc <- qc[, .(nb = sum(nb)), .(sex, name, year)]
 # Printing data
 qc[]
 ```
+]
 
 ---
 
@@ -246,11 +252,11 @@ jp_plot + jf_plot
 
 ## Nettoyage des données
 
-- Les données brutes n'ont déjà aucun signe phonétique (accents, tréma, cédille);
+- Les données brutes n'ont déjà aucun **signe phonétique** (accents, tréma, cédille);
 
-- On remplace les traits d'union par des espaces;
+- On remplace les **traits d'union** par des espaces;
 
-- On corrige manuellement les prénoms tronqués populaires<sup>3</sup> **non ambigus**;
+- On corrige manuellement les prénoms **tronqués** populaires<sup>3</sup> non ambigus;
 
 - Exemples :
   - **J-PHILIPPE** &#x2192; J PHILIPPE &#x2192; **JEAN PHILIPPE**
@@ -351,14 +357,14 @@ sarah_sara_plot + catherine_katherine_plot
 
 - Tâche complexe, particulièrement en français<sup>4</sup>;
 
-- On approxime avec la distance de Levenshtein :
+- On approxime avec la **distance de Levenshtein** :
   
   - Substitution (+1)
   - Insertion (+1)
   - Suppression (+1)
   
 - On propose des groupements parmi les prénoms populaires<sup>5</sup> avec une distance de
-  Levenshtein inférieure à 3;
+  Levenshtein **inférieure à 3**;
 
 - On accepte manuellement les propositions qui sont des homonymes;
 
@@ -544,9 +550,9 @@ class: inverse center middle
 
 ## Normalisation et lissage des données
 
-- On utilise le pourcentage (%) des naissances à chaque année;
+- On utilise le **pourcentage (%)** des naissances à chaque année;
 
-- On utilise une moyenne mobile 3 ans.
+- On utilise une **moyenne mobile** 3 ans.
 
 ```{r normalize-data}
 # Compute percentages
@@ -721,8 +727,8 @@ normalize_male_plot_ma + normalize_female_plot_ma
 
 ## Mesure de stabilité
 
-On utilise le coefficient de variation (CV) de la moyenne mobile 3 ans du pourcentage des naissances
-annuelles dans le temps où $$CV = \frac{\sigma}{\mu}$$
+On utilise le **coefficient de variation (CV)** de la moyenne mobile 3 ans du pourcentage des
+naissances annuelles dans le temps où $$CV = \frac{\sigma}{\mu}$$
 
 ---
 
@@ -880,9 +886,9 @@ options_matrix_plot <- ggplot(
 
 ## Actuel, mais pas trop populaire
 
-- Le prénom doit être dans le top 100 de la génération Alpha;
+- Le prénom doit être **dans le top 100** de la génération Alpha;
 
-- Le prénom doit être hors du top 5 de la génération Alpha.
+- Le prénom doit être **hors du top 5** de la génération Alpha.
 
 ---
 
@@ -955,9 +961,9 @@ namesake_bearable_plot + namesake_painful_plot
 
 ## Facile à écrire pour un inconnu
 
-- Le prénom doit avoir au maximum 2 variantes d'écriture différentes;
+- Le prénom doit avoir **au maximum 2 variantes** d'écriture différentes;
 
-- Le prénom doit avoir une majorité claire pour une variante (au moins 80% des cas).
+- Le prénom doit avoir une **majorité claire** pour une variante (au moins 80% des cas).
 
 ---
 
@@ -998,9 +1004,9 @@ options_matrix_plot +
 
 ## Composé uniquement de caractères alphabétiques
 
-- On élimine les prénoms composés;
+- On élimine les **prénoms composés**;
 
-- On élimine les prénoms avec des accents<sup>6</sup>.
+- On élimine les prénoms avec des **accents**, **cédilles** et/ou **trémas**<sup>6</sup>.
 
 .footnote[
 [6] On n'a pas cette information dans les données, on procède donc manuellement
@@ -1039,7 +1045,7 @@ options_matrix_plot +
 
 ## Le plus intemporel possible
 
-- On élimine les prénoms qui ont un CV > 1.
+- On élimine les prénoms qui ont un **coefficient de variation supérieur à 1**.
 
 ---
 

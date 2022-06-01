@@ -1,5 +1,5 @@
 ---
-title: "Analyse de prénoms"
+title: "Les prénoms québécois d'hier à aujourd'hui"
 subtitle: "Rendez-vous analytique 2022"
 author: "J.P. Le Cavalier"
 date: "3 juin 2022"

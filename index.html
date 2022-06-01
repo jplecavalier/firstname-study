@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>Les prénoms québécois d’hier à aujourd’hui</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="J.P. Le Cavalier" />
+    <script src="libs/header-attrs/header-attrs.js"></script>
+    <link rel="stylesheet" href="xaringan-themer.css" type="text/css" />
+    <link rel="stylesheet" href="extra.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+# Les prénoms québécois d’hier à aujourd’hui
+## Rendez-vous analytique 2022
+### J.P. Le Cavalier
+### 3 juin 2022
+
+---
+
+
+
+
+## Objectifs
+
+- Analyser les **tendances** de prénom au Québec;
+
+- Développer quelques **métriques** d'intérêt.
+
+---
+class: inverse center middle
+
+# Nettoyage des données
+
+---
+
+## Données brutes
+
+Les données de prénom à la naissance au Québec (depuis 1980) sont publiées anuellement par
+[Retraite Québec](https://www.retraitequebec.gouv.qc.ca)&lt;sup&gt;1, 2&lt;/sup&gt;.
+
+
+
+#### Extrait des données brutes pour les filles
+
+
+```
+##         Prénom/Année  1980  1981  1982  ...  2019  2020  2021
+##      1:            A     0     1     1  ...     0     0     0
+##      2:        AABIA     0     0     0  ...     0     0     0
+##      3:    A ABIGAIL     0     0     1  ...     0     0     0
+##      4:      AABISHA     0     0     0  ...     0     0     0
+##      5:        AABLA     0     0     0  ...     0     0     0
+##     ---                                                      
+## 207735:         ZYVA     0     0     0  ...     0     0     0
+## 207736:        ZYVAH     0     0     0  ...     0     0     0
+## 207737:        ZY YU     0     0     0  ...     0     0     0
+## 207738:     ZZENARRA     0     0     0  ...     0     0     0
+## 207739:       Somme: 48152 47365 46180  ... 41010 39834 40620
+```
+
+.footnote[
+[1] https://www.donneesquebec.ca/recherche/dataset/banque-de-prenoms-garcons
+
+[2] https://www.donneesquebec.ca/recherche/dataset/banque-de-prenoms-filles
+]
+
+---
+
+## Transformation des données
+
+.pull-left[
+- On combine les données garçons et filles;
+
+- On supprime la ligne des totaux;
+
+- On renomme les colonnes;
+
+- On passe d'un format large à un format long.
+]
+
+.pull-right[
+#### Extrait des données transformées
+
+
+```
+##           sex         name year nb
+##        1:   M            A 1980  0
+##        2:   M        AAACO 1980  0
+##        3:   M      AAARICK 1980  1
+##        4:   M        AABAN 1980  0
+##        5:   M AABAN BURHAN 1980  0
+##       ---                         
+## 17218442:   F     ZYSHAWNA 2021  0
+## 17218443:   F         ZYVA 2021  0
+## 17218444:   F        ZYVAH 2021  0
+## 17218445:   F        ZY YU 2021  0
+## 17218446:   F     ZZENARRA 2021  0
+```
+]
+
+---
+
+## Exemple d'incohérence dans les données
+
+&lt;img src="img/data-inconsistency-1.png" width="100%" style="display: block; margin: auto;" /&gt;
+
+---
+
+## Nettoyage des données
+
+- Les données brutes n'ont déjà aucun **signe phonétique** (accents, tréma, cédille);
+
+- On remplace les **traits d'union** par des espaces;
+
+- On corrige manuellement les prénoms **tronqués** populaires&lt;sup&gt;3&lt;/sup&gt; non ambigus;
+
+- Exemples :
+  - **J-PHILIPPE** &amp;#x2192; J PHILIPPE &amp;#x2192; **JEAN PHILIPPE**
+  - **P-OLIVIER** &amp;#x2192; P OLIVIER &amp;#x2192; {PIER OLIVIER, PHILIPPE OLIVIER} &amp;#x2192;
+    **P OLIVIER**
+
+.footnote[
+[3] Pour être corrigé, un prénom doit apparaître au moins 30 fois dans les données.
+]
+  
+
+
+---
+
+## Exemple de prénoms homonymes
+
+&lt;img src="img/data-namesake-1.png" width="100%" style="display: block; margin: auto;" /&gt;
+
+---
+
+## Regroupement des prénoms homonymes
+
+- Tâche complexe, particulièrement en français&lt;sup&gt;4&lt;/sup&gt;;
+
+- On approxime avec la **distance de Levenshtein** :
+  
+  - Substitution (+1)
+  - Insertion (+1)
+  - Suppression (+1)
+  
+- On propose des groupements parmi les prénoms populaires&lt;sup&gt;5&lt;/sup&gt; avec une distance de
+  Levenshtein **inférieure à 3**;
+
+- On accepte manuellement les propositions qui sont des homonymes;
+
+- Exemples :
+  - On &lt;span style="color: limegreen;"&gt;accepte&lt;/span&gt; de regrouper **STEPHANIE** et **STEFANIE**
+    (distance de 2)
+  - On &lt;span style="color: tomato;"&gt;refuse&lt;/span&gt; de regrouper **AMELIE** et **AMELIA** (distance
+    de 1)
+
+.footnote[
+[4] Certains algorithmes spécifiques aux langues ont été implantés dans la librairie JavaScript
+    [Talisman](https://yomguithereal.github.io/talisman/).
+    
+[5] Pour être considéré, un prénom doit apparaître au moins 300 fois dans les données.
+]
+
+
+
+---
+class: inverse center middle
+
+# Analyse des tendances
+
+
+
+---
+
+## La génération Y (1981-1996)
+
+&lt;img src="img/gen-y-1.png" width="100%" style="display: block; margin: auto;" /&gt;
+
+---
+
+## La génération Z (1997-2012)
+
+&lt;img src="img/gen-z-1.png" width="100%" style="display: block; margin: auto;" /&gt;
+
+---
+
+## La génération Alpha (2013-2028)
+
+&lt;img src="img/gen-alpha-1.png" width="100%" style="display: block; margin: auto;" /&gt;
+
+---
+class: inverse center middle
+
+# Métriques d'intérêt
+
+---
+
+## Normalisation et lissage des données
+
+- On utilise le **pourcentage (%)** des naissances à chaque année;
+
+- On utilise une **moyenne mobile** 3 ans.
+
+
+
+---
+
+## Données classiques
+
+&lt;img src="img/original-1.png" width="100%" style="display: block; margin: auto;" /&gt;
+
+---
+
+## Données normalisées par naissances annuelles
+
+&lt;img src="img/normalize-1.png" width="100%" style="display: block; margin: auto;" /&gt;
+
+---
+
+## Données lissées par moyenne mobile 3 ans
+
+&lt;img src="img/moving-average-1.png" width="100%" style="display: block; margin: auto;" /&gt;
+
+---
+
+## Mesure de stabilité
+
+On utilise le **coefficient de variation (CV)** de la moyenne mobile 3 ans du pourcentage des
+naissances annuelles dans le temps où `$$CV = \frac{\sigma}{\mu}$$`
+
+---
+
+## Stabilité faible
+
+&lt;img src="img/low-stability-1.png" width="100%" style="display: block; margin: auto;" /&gt;
+
+---
+
+## Stabilité élevée
+
+&lt;img src="img/high-stability-1.png" width="100%" style="display: block; margin: auto;" /&gt;
+
+---
+class: inverse center middle
+
+# Pour ceux qui ne sont pas au courant...
+
+--
+
+# .
+
+--
+
+### Je deviendrai papa d'une &lt;span style="color: deeppink;"&gt;petite fille&lt;/span&gt; en novembre prochain!
+
+---
+
+## Objectif réel
+
+- Aider Sarah et moi à trouver un prénom de bébé!
+
+--
+
+### Contraintes
+
+Le prénom doit être...
+
+- actuel, mais pas trop populaire;
+
+- facile à écrire pour un inconnu;
+
+- composé uniquement de caractères alphabétiques (aucun accent, espace, trait d'union, etc.);
+
+- le plus intemporel possible.
+
+
+
+---
+
+## Actuel, mais pas trop populaire
+
+- Le prénom doit être **dans le top 100** de la génération Alpha;
+
+- Le prénom doit être **hors du top 5** de la génération Alpha.
+
+---
+
+## Actuel, mais pas trop populaire
+
+&lt;img src="img/before-drop-top-10-1.png" width="100%" style="display: block; margin: auto;" /&gt;
+
+---
+
+## Actuel, mais pas trop populaire
+
+&lt;img src="img/drop-top-10-1.png" width="100%" style="display: block; margin: auto;" /&gt;
+
+---
+
+## Facile à écrire pour un inconnu
+
+&lt;img src="img/namesake-criteria-1.png" width="100%" style="display: block; margin: auto;" /&gt;
+
+---
+
+## Facile à écrire pour un inconnu
+
+- Le prénom doit avoir **au maximum 2 variantes** d'écriture différentes;
+
+- Le prénom doit avoir une **majorité claire** pour une variante (au moins 80% des cas).
+
+---
+
+## Facile à écrire pour un inconnu
+
+&lt;img src="img/before-drop-namesakes-1.png" width="100%" style="display: block; margin: auto;" /&gt;
+
+---
+
+## Facile à écrire pour un inconnu
+
+&lt;img src="img/drop-namesakes-1.png" width="100%" style="display: block; margin: auto;" /&gt;
+
+---
+
+## Composé uniquement de caractères alphabétiques
+
+- On élimine les **prénoms composés**;
+
+- On élimine les prénoms avec des **accents**, **cédilles** et/ou **trémas**&lt;sup&gt;6&lt;/sup&gt;.
+
+.footnote[
+[6] On n'a pas cette information dans les données, on procède donc manuellement
+]
+
+---
+
+## Composé uniquement de caractères alphabétiques
+
+&lt;img src="img/before-drop-non-ascii-1.png" width="100%" style="display: block; margin: auto;" /&gt;
+
+---
+
+## Composé uniquement de caractères alphabétiques
+
+&lt;img src="img/drop-non-ascii-1.png" width="100%" style="display: block; margin: auto;" /&gt;
+
+---
+
+## Le plus intemporel possible
+
+- On élimine les prénoms qui ont un **coefficient de variation supérieur à 1**.
+
+---
+
+## Le plus intemporel possible
+
+&lt;img src="img/before-drop-non-timeless-1.png" width="100%" style="display: block; margin: auto;" /&gt;
+
+---
+
+## Le plus intemporel possible
+
+&lt;img src="img/drop-non-timeless-1.png" width="100%" style="display: block; margin: auto;" /&gt;
+
+---
+class: inverse center middle
+
+# À suivre dans 5 mois...
+
+---
+class: thanks-page
+background-image: url(logo.svg)
+background-size: 320px
+background-position: 5% 90%
+
+# Merci!
+
+.pull-right[
+
+&lt;a href="mailto:jplecavalier@me.com"&gt;
+  <svg aria-hidden="true" role="img" viewBox="0 0 512 512" style="height:1em;width:1em;vertical-align:-0.125em;margin-left:auto;margin-right:auto;font-size:inherit;fill:#FEFEFC;overflow:visible;position:relative;"><path d="M476 3.2L12.5 270.6c-18.1 10.4-15.8 35.6 2.2 43.2L121 358.4l287.3-253.2c5.5-4.9 13.3 2.6 8.6 8.3L176 407v80.5c0 23.6 28.5 32.9 42.5 15.8L282 426l124.6 52.2c14.2 6 30.4-2.9 33-18.2l72-432C515 7.8 493.3-6.8 476 3.2z"/></svg> jplecavalier@me.com
+&lt;/a&gt;
+
+&lt;a href="https://www.linkedin.com/in/jplecavalier/"&gt;
+  <svg aria-hidden="true" role="img" viewBox="0 0 448 512" style="height:1em;width:0.88em;vertical-align:-0.125em;margin-left:auto;margin-right:auto;font-size:inherit;fill:#FEFEFC;overflow:visible;position:relative;"><path d="M100.28 448H7.4V148.9h92.88zM53.79 108.1C24.09 108.1 0 83.5 0 53.8a53.79 53.79 0 0 1 107.58 0c0 29.7-24.1 54.3-53.79 54.3zM447.9 448h-92.68V302.4c0-34.7-.7-79.2-48.29-79.2-48.29 0-55.69 37.7-55.69 76.7V448h-92.78V148.9h89.08v40.8h1.3c12.4-23.5 42.69-48.3 87.88-48.3 94 0 111.28 61.9 111.28 142.3V448z"/></svg> @jplecavalier
+&lt;/a&gt;
+
+&lt;a href="https://jplecavalier.rbind.io/"&gt;
+  <svg aria-hidden="true" role="img" viewBox="0 0 496 512" style="height:1em;width:0.97em;vertical-align:-0.125em;margin-left:auto;margin-right:auto;font-size:inherit;fill:#FEFEFC;overflow:visible;position:relative;"><path d="M336.5 160C322 70.7 287.8 8 248 8s-74 62.7-88.5 152h177zM152 256c0 22.2 1.2 43.5 3.3 64h185.3c2.1-20.5 3.3-41.8 3.3-64s-1.2-43.5-3.3-64H155.3c-2.1 20.5-3.3 41.8-3.3 64zm324.7-96c-28.6-67.9-86.5-120.4-158-141.6 24.4 33.8 41.2 84.7 50 141.6h108zM177.2 18.4C105.8 39.6 47.8 92.1 19.3 160h108c8.7-56.9 25.5-107.8 49.9-141.6zM487.4 192H372.7c2.1 21 3.3 42.5 3.3 64s-1.2 43-3.3 64h114.6c5.5-20.5 8.6-41.8 8.6-64s-3.1-43.5-8.5-64zM120 256c0-21.5 1.2-43 3.3-64H8.6C3.2 212.5 0 233.8 0 256s3.2 43.5 8.6 64h114.6c-2-21-3.2-42.5-3.2-64zm39.5 96c14.5 89.3 48.7 152 88.5 152s74-62.7 88.5-152h-177zm159.3 141.6c71.4-21.2 129.4-73.7 158-141.6h-108c-8.8 56.9-25.6 107.8-50 141.6zM19.3 352c28.6 67.9 86.5 120.4 158 141.6-24.4-33.8-41.2-84.7-50-141.6h-108z"/></svg> jplecavalier.rbind.io
+&lt;/a&gt;
+
+&lt;a href="https://github.com/jplecavalier/firstname-study"&gt;
+  <svg aria-hidden="true" role="img" viewBox="0 0 496 512" style="height:1em;width:0.97em;vertical-align:-0.125em;margin-left:auto;margin-right:auto;font-size:inherit;fill:#FEFEFC;overflow:visible;position:relative;"><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg> Code source
+&lt;/a&gt;
+
+]
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightStyle": "github",
+"highlightLines": true,
+"ratio": "16:9",
+"countIncrementalSlides": false
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

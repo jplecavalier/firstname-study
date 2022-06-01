@@ -2,7 +2,7 @@
 title: "Analyse de prénoms"
 subtitle: "Rendez-vous analytique 2022"
 author: "J.P. Le Cavalier"
-date: "2 juin 2022"
+date: "3 juin 2022"
 output:
   xaringan::moon_reader:
     lib_dir: libs
@@ -110,18 +110,6 @@ update_geom_defaults("line", list(
   color = theme_xaringan_get_value("text_color")
 ))
 ```
-
-<!--  IDÉES
-
-- Évolution des prénoms composés populaires dans le temps
-- Différentes définitions de distance entre les noms
-  - Similitude des lettres
-  - Similitude des fréquences
-- Lag France/Qc
-- Expliquer le concept de moyenne mobile
-- Trivia game
-
--->
 
 ## Objectifs
 
@@ -733,7 +721,8 @@ normalize_male_plot_ma + normalize_female_plot_ma
 
 ## Mesure de stabilité
 
-On utilise le coefficient de variation (CV) des prénoms dans le temps où $$CV = \frac{\sigma}{\mu}$$
+On utilise le coefficient de variation (CV) de la moyenne mobile 3 ans du pourcentage des naissances
+annuelles dans le temps où $$CV = \frac{\sigma}{\mu}$$
 
 ---
 
@@ -845,18 +834,22 @@ class: inverse center middle
 
 Le prénom doit être...
 
-- original, mais pas trop;
+- actuel, mais pas trop populaire;
 
-- le plus intemporel possible;
-
-- facilement prononçable en français et en anglais;
+- facile à écrire pour un inconnu;
 
 - composé uniquement de caractères alphabétiques (aucun accent, espace, trait d'union, etc.);
 
-- facile à écrire pour un inconnu.
+- le plus intemporel possible.
 
 ```{r options-jpl}
 options_jpl <- qc_gen_data(2013, 2028, 100)[sex == "F"]
+
+options_matrix <- unique(options_jpl[, .(rnk_gen, group_name, active = TRUE)])[order(rnk_gen)]
+options_matrix[, `:=`(
+  x = rep(1:10, times = 10L),
+  y = rep(10:1, each = 10L)
+)]
 
 options_matrix_plot <- ggplot(
   mapping = aes(
@@ -875,7 +868,7 @@ options_matrix_plot <- ggplot(
     labels = NULL
   ) +
   scale_alpha_manual(
-    values = c(`TRUE` = 1, `FALSE` = 0.2),
+    values = c(`TRUE` = 1, `FALSE` = 0.1),
     guide = guide_none()
   ) +
   theme(
@@ -885,23 +878,29 @@ options_matrix_plot <- ggplot(
 
 ---
 
-## Original, mais pas trop
+## Actuel, mais pas trop populaire
 
-- Dans le top 100 de la génération Alpha
+- Le prénom doit être dans le top 100 de la génération Alpha;
 
-- Hors du top 5 de la génération Alpha
+- Le prénom doit être hors du top 5 de la génération Alpha.
 
 ---
 
-## Original, mais pas trop
+## Actuel, mais pas trop populaire
+
+```{r before-drop-top-10}
+options_matrix_plot +
+  geom_text(
+    data = options_matrix,
+    color = theme_xaringan_get_value("text_color")
+  )
+```
+
+---
+
+## Actuel, mais pas trop populaire
 
 ```{r drop-top-10}
-options_matrix <- unique(options_jpl[, .(rnk_gen, group_name, active = TRUE)])[order(rnk_gen)]
-options_matrix[, `:=`(
-  x = rep(1:10, times = 10L),
-  y = rep(10:1, each = 10L)
-)]
-
 options_matrix[rnk_gen <= 5, active := FALSE]
 
 options_matrix_plot +
@@ -956,17 +955,124 @@ namesake_bearable_plot + namesake_painful_plot
 
 ## Facile à écrire pour un inconnu
 
+- Le prénom doit avoir au maximum 2 variantes d'écriture différentes;
+
+- Le prénom doit avoir une majorité claire pour une variante (au moins 80% des cas).
+
+---
+
+## Facile à écrire pour un inconnu
+
+```{r before-drop-namesakes}
+options_matrix_plot +
+  geom_text(
+    data = options_matrix,
+    color = theme_xaringan_get_value("text_color")
+  )
+```
+
+---
+
+## Facile à écrire pour un inconnu
+
+```{r drop-namesakes}
+drop_namesakes_name <- qc_group_details[sex == "F"][, .(
+  nb = sum(nb)
+), .(group_name, name)][, `:=`(
+  group_nb = sum(nb)
+), .(group_name)][, .(
+  max_prc_name = max(nb / group_nb),
+  nb_name = .N
+), .(group_name)][!(max_prc_name >= 0.8 & nb_name <= 2), group_name]
+
+options_matrix[group_name %in% drop_namesakes_name, active := FALSE]
+
+options_matrix_plot +
+  geom_text(
+    data = options_matrix,
+    color = theme_xaringan_get_value("text_color")
+  )
+```
+
 ---
 
 ## Composé uniquement de caractères alphabétiques
 
+- On élimine les prénoms composés;
+
+- On élimine les prénoms avec des accents<sup>6</sup>.
+
+.footnote[
+[6] On n'a pas cette information dans les données, on procède donc manuellement
+]
+
 ---
 
-## Facilement prononçable en français et en anglais
+## Composé uniquement de caractères alphabétiques
+
+```{r before-drop-non-ascii}
+options_matrix_plot +
+  geom_text(
+    data = options_matrix,
+    color = theme_xaringan_get_value("text_color")
+  )
+```
+
+---
+
+## Composé uniquement de caractères alphabétiques
+
+```{r drop-non-ascii}
+options_matrix[group_name %in% c(
+  "ZOE", "BEATRICE", "EVA", "RAPHAELLE", "MAEVA", "AMELIA", "LEONIE", "EMILIE", "ELODIE", "ANAIS",
+  "ADELE", "OPHELIE", "AURELIE", "EVE", "EVELYNE", "ELEONORE", "ELOISE", "MAIKA", "LEA ROSE"
+), active := FALSE]
+
+options_matrix_plot +
+  geom_text(
+    data = options_matrix,
+    color = theme_xaringan_get_value("text_color")
+  )
+```
 
 ---
 
 ## Le plus intemporel possible
+
+- On élimine les prénoms qui ont un CV > 1.
+
+---
+
+## Le plus intemporel possible
+
+```{r before-drop-non-timeless}
+options_matrix_plot +
+  geom_text(
+    data = options_matrix,
+    color = theme_xaringan_get_value("text_color")
+  )
+```
+
+---
+
+## Le plus intemporel possible
+
+```{r drop-non-timeless}
+drop_non_timeless_name <- summary_qc[sex == "F" & group_cv_prc_year_ma > 1, group_name]
+
+options_matrix[group_name %in% drop_non_timeless_name, active := FALSE]
+
+options_matrix_plot +
+  geom_text(
+    data = options_matrix,
+    color = theme_xaringan_get_value("text_color")
+  )
+```
+
+---
+class: inverse center middle
+
+# À suivre dans 5 mois...
 
 ---
 class: thanks-page

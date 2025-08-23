@@ -144,6 +144,26 @@ transform_group <- function(data) {
 
 }
 
+augment_stats <- function(data) {
+
+  data <- copy(data)
+
+  data[, prc_year := nb / sum(nb), .(sex, year)]
+  data[, group_prc_year := group_nb / sum(nb), .(sex, year)]
+
+  data[, c("prc_year_before", "prc_year_after") := shift(prc_year, c(1, -1)), .(sex, name)]
+  data[, c("group_prc_year_before", "group_prc_year_after") := shift(group_prc_year, c(1, -1)), .(sex, name)]
+  data[, `:=`(
+    prc_year_ma = (prc_year_before + prc_year + prc_year_after) / 3L,
+    group_prc_year_ma = (group_prc_year_before + group_prc_year + group_prc_year_after) / 3L
+  )]
+  data[, c("prc_year_before", "prc_year_after") := NULL]
+  data[, c("group_prc_year_before", "group_prc_year_after") := NULL]
+
+  data[]
+
+}
+
 data <- data.table(
   sex = factor(c("M", "F")),
   url = c(url_m, url_f)
@@ -159,7 +179,8 @@ data[, data_long := mapply(
 )] |>
   transform_tidy() |>
   transform_clean() |>
-  transform_group() ->
+  transform_group() |>
+  augment_stats() ->
   data
 
 fwrite(

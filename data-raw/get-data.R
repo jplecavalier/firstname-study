@@ -80,7 +80,67 @@ transform_clean <- function(data) {
 
   data[, total_nb := sum(nb), .(sex, name)]
 
-  data[total_nb > 0L, .(nb = sum(nb)), .(sex, name, year)]
+  data[total_nb > 0L, .(
+    nb = sum(nb),
+    total_nb = sum(total_nb)
+  ), .(sex, name, year)]
+
+}
+
+transform_group <- function(data) {
+
+  data <- copy(data)
+
+  namesakes <- fread("data-raw/selected-namesake.csv")[!is.na(group)][, group := NULL]
+
+  unique_namesakes <- namesakes[, .(
+    name = unique(c(V1, V2))
+  ), .(sex)][order(sex, name)][, i := 1:.N, .(sex)]
+
+  namesakes[unique_namesakes, I1 := i, on = c(V1 = "name", sex = "sex")]
+  namesakes[unique_namesakes, I2 := i, on = c(V2 = "name", sex = "sex")]
+  setnames(namesakes, "sex", "SEX")
+
+  unique_namesakes <- unique_namesakes[, {
+
+    namesakes_matrix <- diag(length(name)) == TRUE
+    namesakes_matrix[as.matrix(namesakes[SEX == sex, .(I1, I2)])] <- TRUE
+    namesakes_matrix[as.matrix(namesakes[SEX == sex, .(I2, I1)])] <- TRUE
+
+    namesake_list <- apply(namesakes_matrix, 1, which)
+    while(TRUE) {
+      new <- lapply(namesake_list, function(x) sort(unique(unlist(namesake_list[x]))))
+      if (identical(namesake_list, new)) break
+      namesake_list <- new
+    }
+    namesake_list <- unique(namesake_list)
+
+    data.table(
+      i = unlist(namesake_list),
+      group = rep(1:length(namesake_list), sapply(namesake_list, length))
+    )
+
+  }, .(sex)][unique_namesakes, name := name, on = .(sex, i)][, i := NULL]
+
+  data[unique_namesakes, group := group, on = .(sex, name)]
+
+  data[!is.na(group), `:=`(
+    group = 1,
+    group_name = .SD[which.max(total_nb), name],
+    group_name_nb = .N,
+    group_label = paste0(.SD[which.max(total_nb), name], " (+", .N - 1L, ")"),
+    group_nb = sum(nb)
+  ), .(sex, year, group)]
+  data[is.na(group), `:=`(
+    group = 0,
+    group_name = name,
+    group_name_nb = 1L,
+    group_label = name,
+    group_nb = nb
+  )]
+  data[, group := NULL]
+
+  data[]
 
 }
 
@@ -98,10 +158,9 @@ data[, data_long := mapply(
   SIMPLIFY = FALSE
 )] |>
   transform_tidy() |>
-  transform_clean() ->
+  transform_clean() |>
+  transform_group() ->
   data
-
-# TODO: Grouping namesakes
 
 fwrite(
   x = data,

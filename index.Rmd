@@ -384,10 +384,10 @@ sarah_sara_plot + catherine_katherine_plot
 ```{r group-data}
 # To manually choose the considered namesakes:
 #   1. Run src/helper-namesake.R
-#   2. Save namesake.csv as selected-namesake.csv
+#   2. Save data-raw/namesake.csv as data-raw/selected-namesake.csv
 #   3. Create a column named 'group' of type boolean
 
-namesakes <- fread("selected-namesake.csv")[!is.na(group)][, group := NULL]
+namesakes <- fread("data-raw/selected-namesake.csv")[!is.na(group)][, group := NULL]
 
 unique_namesakes <- namesakes[, .(
   name = unique(c(V1, V2))

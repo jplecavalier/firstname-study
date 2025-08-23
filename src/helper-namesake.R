@@ -6,5 +6,5 @@ fwrite(
     data.table(matrix(name[pairs], ncol = 2L))
 
   }, .(sex)],
-  file = "namesake.csv"
+  file = "data-raw/namesake.csv"
 )

@@ -82,7 +82,7 @@ filter_no_accent <- function(data) {
   groups_accent <- c(
     "ADELE", "AMELIA", "ANAIS", "ATHENA", "AURELIE", "BEATRICE", "CELESTE", "CLEMENCE", "ELEONORE",
     "ELODIE", "ELOISE", "EMILIE", "EVA", "EVE", "EVELYNE", "LEA ROSE", "LEANA", "LENA", "LEONIE",
-    "MAEVA", "MAIKA", "NOELIE", "OPHELIA", "OPHELIE", "RAPHAELLE", "ZOE"
+    "MAEVA", "MAIKA", "NOELIE", "OPHELIA", "OPHELIE", "PENELOPE", "RAPHAELLE", "ZOE"
   )
 
   data[!(group_name %in% groups_accent)]

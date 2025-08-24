@@ -29,7 +29,8 @@ individual_group_facets <- function(data, sex, group_name) {
     ) +
     scale_y_continuous(
       name = NULL,
-      label = label_percent()
+      label = label_percent(),
+      limits = c(0, NA)
     ) +
     scale_color_manual(
       values = c(

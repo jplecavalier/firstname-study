@@ -55,6 +55,26 @@ filter_gen <- function(data, year_begin, year_end, top = 5L) {
 
 }
 
+filter_peak <- function(data, year_begin, year_end, top_years = 3L, min_group_peak_prc = 0.005) {
+
+  data <- copy(data)
+
+  peak_groups <- data[year >= year_begin & year <= year_end, .(
+    group_peak_nb = sum(group_nb)
+  ), .(sex, group_name)][, `:=`(
+    group_peak_prc = group_peak_nb / sum(group_peak_nb)
+  ), .(sex)][group_peak_prc >= min_group_peak_prc]
+
+  peak_data <- data[peak_groups[, .(sex, group_name)], ,on = .(sex, group_name)]
+  peak_data <- peak_data[!is.na(group_prc_year_ma)]
+  setorder(peak_data, -group_prc_year_ma)
+  peak_data <- peak_data[, .SD[1:top_years, year], .(sex, group_name)]
+  peak_groups <- unique(peak_data[V1 >= year_begin & V1 <= year_end, .(sex, group_name)])
+
+  data[peak_groups, , on = .(sex, group_name)]
+
+}
+
 drop_namesake_group <- function(data, prc, nb) {
 
   group_details(data)[, .(

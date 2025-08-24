@@ -75,6 +75,18 @@ filter_peak <- function(data, year_begin, year_end, top_years = 3L, min_group_pe
 
 }
 
+filter_no_accent <- function(data) {
+
+  groups_accent <- c(
+    "ADELE", "AMELIA", "ANAIS", "ATHENA", "AURELIE", "BEATRICE", "CELESTE", "CLEMENCE", "ELEONORE",
+    "ELODIE", "ELOISE", "EMILIE", "EVA", "EVE", "EVELYNE", "LEA ROSE", "LEANA", "LENA", "LEONIE",
+    "MAEVA", "MAIKA", "NOELIE", "OPHELIA", "OPHELIE", "RAPHAELLE", "ZOE"
+  )
+
+  data[!(group_name %in% groups_accent)]
+
+}
+
 drop_namesake_group <- function(data, prc, nb) {
 
   group_details(data)[, .(

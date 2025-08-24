@@ -59,6 +59,8 @@ filter_peak <- function(data, year_begin, year_end, top_years = 3L, min_group_pe
 
   data <- copy(data)
 
+  # TODO: Make sure to use all the data for calculating prc instead of filtered data
+
   peak_groups <- data[year >= year_begin & year <= year_end, .(
     group_peak_nb = sum(group_nb)
   ), .(sex, group_name)][, `:=`(
@@ -87,15 +89,30 @@ filter_no_accent <- function(data) {
 
 }
 
-drop_namesake_group <- function(data, prc, nb) {
+filter_namesake <- function(data, min_prc, max_nb) {
 
-  group_details(data)[, .(
+  data <- copy(data)
+
+  keep_namesake_groups <- group_details(data)[, .(
     nb = sum(nb)
   ), .(sex, group_name, name)][, `:=`(
-    group_nb = sum(nb)
-  ), .(sex, group_name)][, .(
-    max_prc_name = max(nb / group_nb),
-    nb_name = .N
-  ), .(sex, group_name)][!(max_prc_name >= prc & nb_name <= nb), .(sex, group_name, nb_name, max_prc_name)]
+    group_name_nb = .N,
+    group_nb = sum(nb),
+    group_name_prc = nb / sum(nb)
+  ), .(sex, group_name)][group_name == name & group_name_prc >= min_prc & group_name_nb <= max_nb]
+
+  drop_namesake_groups <- group_details(data)[, .(
+    nb = sum(nb)
+  ), .(sex, group_name, name)][, `:=`(
+    group_name_nb = .N,
+    group_nb = sum(nb),
+    group_name_prc = nb / sum(nb)
+  ), .(sex, group_name)][group_name == name & !(group_name_prc >= min_prc & group_name_nb <= max_nb)]
+
+  data[, drop := FALSE]
+  data[drop_namesake_groups, drop := TRUE, on = .(sex, group_name)]
+  data_filter <- data[drop == FALSE][, drop := NULL]
+
+  data_filter[]
 
 }
